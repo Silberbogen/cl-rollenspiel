@@ -1,11 +1,11 @@
 ;;;; -*- mode: lisp -*-
 ;;;; -*- coding: utf-8 -*-
-;;;; Dateiname: cl-hilfsroutinen.lisp
-;;;; Beschreibung: Routinen, die mich bei diversen Aufgaben unterstützen
+;;;; Dateiname: cl-rollenspiel.lisp
+;;;; Beschreibung: Routinen zur Unterstützung bei Rollenspielen
 ;;;; ------------------------------------------------------------------------
 ;;;; Author: Sascha K. Biermanns, <skkd PUNKT h4k1n9 AT yahoo PUNKT de>
 ;;;; Lizenz: ISC
-;;;; Copyright (C) 2011-2015 Sascha K. Biermanns
+;;;; Copyright (C) 2015 Sascha K. Biermanns
 ;;;; Permission to use, copy, modify, and/or distribute this software for any
 ;;;; purpose with or without fee is hereby granted, provided that the above
 ;;;; copyright notice and this permission notice appear in all copies.
