@@ -27,6 +27,7 @@
   (:nicknames :rollenspiel :rpg)
   (:use :common-lisp)
   (:export
+   #:auswahl
    #:w4
    #:w6
    #:w8
@@ -35,6 +36,7 @@
    #:w20
    #:w100
    #:würfelpool
+   #:zahlen-auswahl
    ))
 
 

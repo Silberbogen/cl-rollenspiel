@@ -32,16 +32,16 @@
 
 (defun wurfserie (&optional (anzahl 1) (seiten 6))
   "HILFS-FUNKTION: Simuliert mehrere Würfe mit einer Anzahl Würfeln"
-  (if (plusp anzahl)
-	(do ((i 0 (1+ i))
-		 (summe 0)
-         geworfene-augen)
-		((= i anzahl)
-		 (values summe geworfene-augen))
-      (let ((wert (würfelwurf seiten)))
-        (incf summe wert)
-        (push wert geworfene-augen)))
-    (error "~&Der Aufruf erfolgt mittels (WURFSERIE ANZAHL) oder (WURFSERIE ANZAHL SEITEN), wobei ANZAHL und SEITEN positive Integerzahlen darstellen müssen.")))
+  (check-type anzahl (integer 1 *))
+  (check-type seiten (integer 1 *))
+  (do ((i 0 (1+ i))
+	   (summe 0)
+	   geworfene-augen)
+	  ((= i anzahl)
+	   (values summe geworfene-augen))
+	(let ((wert (würfelwurf seiten)))
+	  (incf summe wert)
+	  (push wert geworfene-augen))))
 
 
 ;;; ###################
@@ -49,38 +49,53 @@
 ;;; ###################
 
 
+(defun auswahl (orte ctrl &rest args &aux (anzahl (length orte)))
+  "AUSWAHL empfängt eine Liste von Funktionen in ORTE und einen Abfragestring CTRL samt eventueller Argumente in ARGS und liefert als Rückgabewert die gewünschte Funktion aus ORTE zurück."
+  (check-type orte list)
+  (check-type ctrl string)
+  (let ((auswahl (apply #'zahlen-auswahl anzahl ctrl args)))
+	(elt orte (1- auswahl))))
+
+
 (defun w4 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem vierseitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 4))
 
 
 (defun w6 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem sechsseitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 6))
 
 
 (defun w8 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem achtseitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 8))
 
 
 (defun w10 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem zehnseitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 10))
 
 
 (defun w12 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem zwölfseitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 12))
 
 
 (defun w20 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem zwanzigseitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 20))
 
 
 (defun w100 (&optional (anzahl 1))
   "FUNKTION: Simuliert ANZAHL Würfe mit einem 100seitigen Würfel"
+  (check-type anzahl (integer 1 *))
   (wurfserie anzahl 100))
 
 
@@ -93,6 +108,8 @@ Die Funktion liefert folgende Rückgabewerte in der aufgeführten Reihenfolge zu
 - ANZAHL Nettoerfolge, wenn vorhanden, sonst NIL
 - boolsche Antwort, ob ein Patzer vorliegt
 - boolsche Antwort, ob ein kritischer Patzer vorliegt"
+  (check-type anzahl (integer 1 *))
+  (check-type schwellenwert (integer 1 *))
   (multiple-value-bind (wert würfel) (w6 anzahl)
     (let ((erfolge 0)
           (einser 0)
@@ -113,4 +130,19 @@ Die Funktion liefert folgende Rückgabewerte in der aufgeführten Reihenfolge zu
       (when (= einser anzahl)
         (setf kritischer-patzer 't))
       (values wert würfel erfolg (if (plusp nettoerfolge) nettoerfolge) patzer kritischer-patzer))))
-        
+
+
+(defun zahlen-auswahl (max ctrl &rest args)
+  "ZAHLEN-AUSWAHL gibt den String CTRL samt eventueller Argumente ARGS aus und erzwingt die Eingabe einer Zahl zwischen 1 und MAX. Diese Zahl wird zurückgeliefert."
+  (do ((danach nil t)
+	   (ctrl (concatenate 'string ctrl " > ")))
+	  (nil)
+	(when danach
+	  (format *query-io* "~&Bitte gib eine Zahl zwischen 1 und ~A ein.~%" max))
+	(apply #'format *query-io* ctrl args)
+	(let* ((antw (string-trim " " (read-line *query-io*))))
+	  (unless (string-equal "" (nur-ziffern antw))
+		(let ((antwort (parse-integer (nur-ziffern antw))))
+		  (if (and (> antwort 0) (<= antwort max))
+			  (return-from zahlen-auswahl antwort)))))))
+
