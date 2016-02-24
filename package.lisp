@@ -28,6 +28,14 @@
   (:use :common-lisp)
   (:export
    #:auswahl
+   #:ereignis
+   #:erhöhe
+   #:inventar
+   #:kampf
+   #:mahlzeit
+   #:person
+   #:spieler
+   #:versuche-dein-glück
    #:w4
    #:w6
    #:w8

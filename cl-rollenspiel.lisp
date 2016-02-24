@@ -25,6 +25,31 @@
 (use-package :cl-hilfsroutinen)
 
 
+;;; ######################
+;;; # Hier wird's global #
+;;; ######################
+
+
+(defparameter *ereignis* (make-hash-table)
+  "Hält fest, ob gewisse Ereignisse eingetroffen sind")
+
+
+(defparameter *inventar* (make-hash-table)
+  "Das Inventar des Spielers")
+
+
+(defparameter *person* (make-hash-table)
+  "Verwaltet Aufenthaltsorte anderer Personen")
+
+
+(defparameter *spieler* (make-hash-table)
+  "Die Charakterwerte des Spielers")
+
+
+(defparameter *zug* 'nil
+  "Speichert den Verlauf des Weges, den der Spieler nimmt")
+
+
 ;;; #########################
 ;;; # Wird NICHT exportiert #
 ;;; #########################
@@ -55,6 +80,161 @@
   (check-type ctrl string)
   (let ((auswahl (apply #'zahlen-auswahl anzahl ctrl args)))
 	(elt orte (1- auswahl))))
+
+
+(defun ereignis (key &optional wert)
+  "EREIGNIS dient dazu, Marker zu Ereignissen zu erstellen und abzufragen. Zum Abfragen die der Syntax (EREIGNIS SCHLÜSSEL), zum Erstellen/Ändern eines Ereignisses werden lautet die Synatx (EREIGNIS SCHLÜSSEL WERT)."
+  (if (null wert)
+	  (gethash key *ereignis* nil)
+	  (setf (gethash key *ereignis* nil) wert)))
+
+
+(defun erhöhe (key wert)
+  "ERHÖHE dient dazu, die 6 Charakterwerte eines Spielers separat zu behandeln: GEWANDHEIT, STÄRKE, GLÜCK - und ihre Maximalwert: MAX-GEWANDHEIT, MAX-GLÜCK, MAX-STÄRKE. Die Syntax ist hierbei unterschiedlich. Während sich aus dem Spielablauf ergibt, das GEWANDHEIT, GLÜCK und STÄRKE um einen Betrag erhöht werden, wird bei ihren MAX-Gegenstücken ein neuer Wert Absolutwert gesetzt."
+  (case key
+	(gewandheit
+	 (let ((max (spieler 'max-gewandheit)))
+	   (if (<= (+ (spieler 'gewandheit) 4) max)
+		   (spieler 'gewandheit wert)
+		   (spieler 'gewandheit max))))
+	(glück
+	 (let ((max (spieler 'max-glück)))
+	   (if (<= (+ (spieler 'glück) 4) max)
+		   (spieler 'glück wert)
+		   (spieler 'glück max))))
+	(stärke
+	 (let ((max (spieler 'max-stärke)))
+	   (if (<= (+ (spieler 'stärke) 4) max)
+		   (spieler 'stärke wert)
+		   (spieler 'stärke max))))
+	(max-gewandheit
+	 (spieler 'max-gewandheit wert))
+	(max-glück
+	 (spieler 'max-glück wert))
+	(max-stärke
+	 (spieler 'max-stärke wert))))
+
+
+(defun inventar (key &optional (wert 0))
+  (typecase wert
+	(number
+	 (if (zerop wert)
+		 (gethash key *inventar* 0)
+		 (let ((aktuell (gethash key *inventar* 0)))
+		   (cond ((zerop aktuell)
+				  (values nil 0))
+				 ((< (+ aktuell wert) 0)
+				  (values nil '<0))
+				 ((zerop (+ aktuell wert))
+				  (remhash key *inventar*)
+				  (values t 0))
+				 (t
+				  (values t (incf (gethash key *inventar* 0) wert)))))))
+	(otherwise
+	 (setf (gethash key *inventar* nil) wert))))
+
+
+(defun kampf (gegner &optional flucht treffer-verboten)
+  (flet ((kampfrunde (gegner)
+		   (let ((g1 (+ (spieler 'gewandheit) (w6 2) (spieler 'angriffsbonus)))
+				 (g2 (+ (third gegner) (w6 2))))
+			 (when (ereignis 'unsichtbar)
+			   (incf g1 2))
+			 (when (= g1 g2)
+			   (return-from kampfrunde 't)) ; Unentschieden, nicht getroffen
+			 (textausgabe "~A: Stärke ~A, Gewandheit ~A, Glück ~A" (spieler 'name)
+						  (spieler 'stärke) (spieler 'gewandheit) (spieler 'glück))
+			 (textausgabe "~A: Stärke ~A, Gewandheit ~A" (first gegner)
+						  (second gegner) (third gegner))
+			 (when flucht
+			   (if (j-oder-n-p "Möchtest du die Möglichkeit nutzen und fliehen?")
+				   (return-from kampf flucht)))
+			 (let* ((glückstest (and (plusp (spieler 'glück))
+									 (j-oder-n-p "Möchtest du dein Glück versuchen?")))
+					(wirklichglück (and glückstest (versuche-dein-glück))))
+			   (when (> g1 g2) ; Der Spieler geht als Sieger hervor
+				 (if (and (ereignis 'nur-silber-trifft) (not (inventar 'silberwaffe)))
+					 (return-from kampfrunde 't)) ; Das Monster ist imun - dumm
+				 (if (ereignis 'unsichtbar)
+					 (decf (second gegner) 2)) ; Unsichtbare treffen besser ;)
+				 (when (and (or (plusp (inventar 'gewehr)) (plusp (inventar 'pistole)))
+							(plusp (inventar 'patronen)))
+				   (decf (second gegner))
+				   (inventar 'patronen -1))
+				 (when glückstest
+				   (if wirklichglück
+					   (decf (second gegner) 4)
+					   (decf (second gegner)))
+				   (return-from kampfrunde 't))
+				 (decf (second gegner) 2)
+				 (return-from kampfrunde 't))
+			   (when (< g1 g2)
+				 (let ((schildbonus (if (and (plusp (inventar 'schild)) (= (w6) 6)) 1 0)))
+				   (when (ereignis 'unsichtbar)
+					 (let ((wurf (w6)))
+					   (if (or (= wurf 2) (= wurf 4))
+						   (if (< (spieler 'stärke) (spieler 'max-stärke))
+							   (spieler 'stärke 1))
+						   (if (= wurf 6)
+							   (return-from kampfrunde 't)))))
+				   (when glückstest
+					 (if wirklichglück
+						 (spieler 'stärke (+ -1 schildbonus))
+						 (spieler 'stärke (+ -4 schildbonus)))
+					 (return-from kampfrunde 'nil))
+				   (spieler 'stärke (+ -2 schildbonus))
+				   (return-from kampfrunde 'nil)))))
+		   't)
+		 (gesamt-stärke ()
+		   (let ((accu 0))
+			 (dolist (i gegner accu)
+			   (incf accu (second i))))))
+	(do ((kein-treffer-erhalten 't))
+		((or (<= (spieler 'stärke) 0) (<= (gesamt-stärke) 0)))
+	  (dolist (i gegner)
+		(if (plusp (spieler 'stärke))
+			(if (plusp (second i))
+				(progn
+				  (setf kein-treffer-erhalten (kampfrunde i))
+				  (if (and treffer-verboten (not kein-treffer-erhalten))
+					  (return-from kampf 'nil))))
+			(return-from kampf 'nil))))
+	(when (plusp (spieler 'stärke))
+	  't)))
+
+
+(defun mahlzeit ()
+  (when (j-oder-n-p "Möchtest du eine Mahlzeit zu dir nehmen")
+	(if (plusp (inventar 'proviant))
+		(progn
+		  (textausgabe "Nachdem du dich versichert hast, das niemand in der Nähe ist, entnimmst du ein Proviantpaket aus deinem Rucksack. Genüsslich und so leise wie möglich verzehrst du es. Du kannst spüren, wie etwas Kraft in deinen müden Körper zurückkehrt.")
+		  (inventar 'proviant -1)
+		  (erhöhe 'stärke 4))
+		(textausgabe "Nachdem du dich versichert hast, das niemand in der Nähe ist, durchwühlst du deinen Rucksack auf der Suche nach einem Proviantpaket. Nach einigen Minuten und mehrfachem aus- und einpacken des Rucksacks gibst du verzweifelt auf. Es ist tatsächlich kein einziger Brotkrummen mehr übrig."))))
+
+
+(defun person (key &optional wert)
+  (if (null wert)
+	  (gethash key *person* nil)
+	  (setf (gethash key *person* nil) wert)))
+
+
+(defun spieler (key &optional (wert 0))
+  (typecase wert
+	(number
+	 (if (zerop wert)
+		 (gethash key *spieler* 0)
+		 (incf (gethash key *spieler* 0) wert)))
+	(otherwise
+	 (setf (gethash key *spieler* nil) wert))))
+
+
+(defun versuche-dein-glück ()
+  (let ((glück (spieler 'glück)))
+	(when (plusp glück)
+	  (spieler 'glück -1)
+	  (if (<= (w6 2) glück)
+			't))))
 
 
 (defun w4 (&optional (anzahl 1))
