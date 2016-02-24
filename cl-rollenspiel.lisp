@@ -83,7 +83,7 @@
 
 
 (defun ereignis (key &optional wert)
-  "EREIGNIS dient dazu, Marker zu Ereignissen zu erstellen und abzufragen. Zum Abfragen die der Syntax (EREIGNIS SCHLÜSSEL), zum Erstellen/Ändern eines Ereignisses werden lautet die Synatx (EREIGNIS SCHLÜSSEL WERT)."
+  "EREIGNIS dient dazu, Marker zu Ereignissen zu erstellen und abzufragen. Zum Abfragen dient der Syntax (EREIGNIS SCHLÜSSEL), zum Erstellen/Ändern eines Ereignisses werden lautet die Syntax (EREIGNIS SCHLÜSSEL WERT)."
   (if (null wert)
 	  (gethash key *ereignis* nil)
 	  (setf (gethash key *ereignis* nil) wert)))
@@ -116,6 +116,7 @@
 
 
 (defun inventar (key &optional (wert 0))
+  "INVENTAR dient dazu, Marker zu Gegenständen im Inventar zu erstellen und abzufragen. Zum Abfragen dient der Syntax (INVENTAR GEGENSTAND), zum Erstellen/Ändern eines Gegenstandes im Inventar lautet die Syntax (INVENTAR GEGENSTAND ANZAHL)."
   (typecase wert
 	(number
 	 (if (zerop wert)
@@ -135,6 +136,7 @@
 
 
 (defun kampf (gegner &optional flucht treffer-verboten)
+  "KAMPF ermöglicht das Bestreiten eines Kampfes von Anfang bis Ende zwischen dem Spieler und einem Gegner. Hierbei wird auf bestimmte besondere Bedingungen eingegangen, wie z.B. einem unsichtbaren Gegner. Es kann optional eine Fluchtmöglichkeit angeboten werden, ebenso wie die Bedingung, das ein Treffer durch den Gegner fatal ist."
   (flet ((kampfrunde (gegner)
 		   (let ((g1 (+ (spieler 'gewandheit) (w6 2) (spieler 'angriffsbonus)))
 				 (g2 (+ (third gegner) (w6 2))))
